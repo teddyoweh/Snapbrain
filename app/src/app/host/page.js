@@ -63,10 +63,10 @@ export default function HostPage(){
             <label htmlFor="">
                 Profile</label>
                 <div className="profiles-imgs">
-            {profiles&&profiles.map((image)=>{
+            {profiles&&profiles.map((image,index)=>{
 
                 return (
-                    <div className={selected==image? "profile-img active":"profile-img"} 
+                    <div key={index} className={selected==image? "profile-img active":"profile-img"} 
                     onClick={(e)=>{
               
                         localStorage.setItem("profileimg",image)
