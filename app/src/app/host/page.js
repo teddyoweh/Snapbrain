@@ -10,7 +10,7 @@ import profiles from "./data"
 export default function HostPage(){
     const [title,setTitle] = useState('')
     const  [btnclass,setBtnClass] = useState("btn")
-    const [username,setUsername] = useState(localStorage.getItem("username")||"")
+    const [username,setUsername] = useState("")
      const [selected,setSelected] = useState(null)
     const router = useRouter()
     function handleSubmit(){ 
