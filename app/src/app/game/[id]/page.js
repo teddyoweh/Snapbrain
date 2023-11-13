@@ -372,7 +372,7 @@ export default function GamePage(){
                 {
                    [...Array(sessiondata.session.teams)].map((team,index)=>{
                         return (
-                            <div className="team">
+                            <div key={index}className="team">
                                 <label htmlFor="" className="team-title">Group {index+1}</label>
                               <RenderTeamBox id={id} session={sessiondata}/>
                             </div>
