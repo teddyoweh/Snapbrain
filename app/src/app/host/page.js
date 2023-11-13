@@ -15,6 +15,7 @@ export default function HostPage(){
       const [selected,setSelected] = useState(null)
       const [teams,setteams] = useState(0)
     const router = useRouter()
+    const {userid} = useContext(AuthContext)
     function handleSubmit(){ 
         const v = title==''?"btn vibrating":"btn"
         setBtnClass(v)
@@ -24,7 +25,7 @@ export default function HostPage(){
       if(title!=""){
         MicroServiceClient.createSession({
             title:title,
-            userid:localStorage.getItem("userid"),
+            userid:userid,
             uimg:selected,
             username:username,
             teams:teams
