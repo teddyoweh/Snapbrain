@@ -16,9 +16,10 @@ function Loading() {
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [userid, setUserId] = useState(localStorage.getItem('userid'));
-  const [uimg, setUimg] = useState(localStorage.getItem('uimg'));
-const [username,setUsername] = useState(localStorage.getItem('username'))
+  const [userid, setUserId] = useState(typeof localStorage !== 'undefined' ? localStorage.getItem('userid') : null);
+  const [uimg, setUimg] = useState(typeof localStorage !== 'undefined' ? localStorage.getItem('uimg') : null);
+  const [username, setUsername] = useState(typeof localStorage !== 'undefined' ? localStorage.getItem('username') : null);
+  
   const router = useRouter();
 
   const webSocketClient = new WebSocketClient();
