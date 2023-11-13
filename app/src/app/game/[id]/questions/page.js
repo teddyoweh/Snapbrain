@@ -25,9 +25,9 @@ function RenderPostQuestions({session,sid,setdata,data}) {
                             </div>
                             <div className="answers">
                                 {
-                                    question.answers.map((answer)=>{
+                                    question.answers.map((answer,index)=>{
                                         return (
-                                            <div className="answer">
+                                            <div key={index }className="answer">
                                                 <label htmlFor="">
                                                     {answer.value}
                                                 </label>
@@ -139,7 +139,7 @@ function RenderAddQuestion({sid,setdata}) {
             </div>
              
             {answers.map((answer,index) => (
-                <div className="input-section">
+                <div key={index}className="input-section">
 
           
                 <div key={answer.id} className="input-box">
