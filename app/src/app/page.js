@@ -45,7 +45,7 @@ export default function Home() {
 <Link href={"/host"}>
 Host
 </Link>
-<Link href={"/host"}>
+<Link href={"/join"}>
 Join
 </Link>
 </div>

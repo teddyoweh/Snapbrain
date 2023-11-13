@@ -8,29 +8,29 @@ import { wrapImg } from "../services/utils"
 import profiles from "./data"
 import { AuthContext } from "../context/AuthContext"
  
-export default function HostPage(){
-    const [title,setTitle] = useState('')
+export default function JoinPage(){
+    const [code,setCode] = useState('')
     const  [btnclass,setBtnClass] = useState("btn")
-    const {setUsername,username,setUimg} = useContext(AuthContext)
+    const {setUsername,username,setUimg,userid} = useContext(AuthContext)
       const [selected,setSelected] = useState(null)
-      const [teams,setteams] = useState(0)
+ 
     const router = useRouter()
     function handleSubmit(){ 
-        const v = title==''?"btn vibrating":"btn"
+        const v = code==''||username!=""||selected!=null?"btn vibrating":"btn"
         setBtnClass(v)
       setTimeout(()=>{
           setBtnClass("btn")
       },2000)
-      if(title!=""){
-        MicroServiceClient.createSession({
-            title:title,
-            userid:localStorage.getItem("userid"),
+      if(code!=""&&username!=""&&selected!=null){
+        MicroServiceClient.joinSession({
+            code:code,
+            userid:userid,
             uimg:selected,
             username:username,
-            teams:teams
+     
 
         }).then((res)=>{
-            router.push(`/game/${res._id}`)
+            router.push(`/game/${res.session._id}`)
          
         
         })
@@ -46,11 +46,11 @@ export default function HostPage(){
 
  
             <label htmlFor="">
-                Session Title
+                Session Code
             </label>
             <div className="input-box">
-                <input placeholder="Teddy's Classroom" value={title} onChange={(e)=>{
-                    setTitle(e.target.value)
+                <input placeholder="hdfDIs" value={code} onChange={(e)=>{
+                    setCode(e.target.value)
                 }} />
             
             </div>
@@ -66,16 +66,7 @@ export default function HostPage(){
             
             </div>
 
-            <label htmlFor="">
-                Number of Teams
-            </label>
-            <div className="input-box number">
-                <input type="number" placeholder="Team Number" value={teams} onChange={(e)=>{
-   
-                    setteams(e.target.value)
-                }} />
-            
-            </div>
+          
             <label htmlFor="">
                 Profile</label>
                 <div className="profiles-imgs">
@@ -99,7 +90,7 @@ export default function HostPage(){
             })}
         </div>
             <div className={btnclass} onClick={handleSubmit}>
-                    Start
+                    Join
                 </div>
                 </div>
         </div>

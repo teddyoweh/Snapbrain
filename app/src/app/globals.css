@@ -3,3 +3,13 @@
 body{
   margin: 0;
 }
+:root{
+  --background:linear-gradient(182deg,white, rgb(255 255 255));
+}
+*{
+  box-sizing: border-box;
+}
+
+input{
+  outline: none;
+}

@@ -4,7 +4,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    background:linear-gradient(182deg, rgb(222 218 255), rgb(183 174 255));
+    background:var(--background);
     .logo-box{
         display: flex;
         flex-direction: column;

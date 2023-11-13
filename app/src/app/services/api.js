@@ -22,16 +22,45 @@ class MicroService {
     }
   }
 
-  async joinSession(sessionId, data) {
+  async getSession(data) {
     try {
-      const response = await this.axiosInstance.post(`/join_session/${sessionId}`, data);
+      const response = await this.axiosInstance.post(endpoints.get_session,data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting session:', error);
+      throw error;
+    }
+  }
+  async getUserSession(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.get_user_session, data);
       return response.data;
     } catch (error) {
       console.error('Error joining session:', error);
       throw error;
     }
   }
-t
+  async joinSession(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.join_session,data);
+      return response.data;
+    } catch (error) {
+      console.error('Error joining session:', error);
+      throw error;
+    }
+  }
+  
+async addQuestion(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.add_question, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding question:', error);
+      throw error;
+    }
+  }
+
+
   async getImages(data) {
     try {
       const response = await this.axiosInstance.get(endpoints.images);

@@ -7,12 +7,16 @@ const crypto = require('crypto');
 const app = express();
 const path = require('path');
 const mongoose = require('mongoose');
-
+const { randomBytes } = require('crypto');
 
 const fs = require('fs');
+const SessionModel = require('./models/session.model');
+const userModel = require('./models/user.model');
+const SessionUserModel = require('./models/session.user.model');
+const questionModel = require('./models/questions.model');
 const config = {
-    DB: process.env.MONGODB_URI
-        //DB: process.env.MONGODB_URI || 'mongodb://localhost/tsuapp'
+    DB: process.env.MONGODB
+      
 }
 let pngFiles = [];
 const PORT = process.env.PORT || 3030;
@@ -30,6 +34,19 @@ fs.readdir("./images", (err, files) => {
    
   });
 
+
+  function generateUID(length = 8) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = randomBytes(length);
+    let uid = '';
+  
+    for (let i = 0; i < length; i++) {
+      const randomIndex = bytes[i] % characters.length;
+      uid += characters.charAt(randomIndex);
+    }
+  
+      return uid;
+  }
 
   mongoose.connect(config.DB, { useNewUrlParser: true }).then(
     () => {
@@ -50,6 +67,29 @@ function createUniqueId() {
   hash.update(data);
   return hash.digest('hex');
 }
+async function getUserSessionsAndTeams(sessionid) {
+    try {
+      const userSessions = await SessionUserModel.find({
+        sessionid: sessionid
+      });
+      const teamHashMap = {};
+  
+      userSessions.forEach(session => {
+        const { team } = session;
+        
+        if (!teamHashMap[team]) {
+          teamHashMap[team] = [];
+        }
+  
+        teamHashMap[team].push(session);
+      });
+  
+      return { userSessions, teamHashMap };
+    } catch (error) {
+      console.error('Error fetching user sessions:', error);
+      throw error;
+    }
+  }
 const memory = {
     sessions: [],
 
@@ -63,88 +103,147 @@ app.get('/', (req, res) => {
     });
 
 app.post('/api/create_session', (req, res) => {
-    console.log(req.body)
-    const sessionId = createUniqueId();
-    const session = new Session(sessionId, req.body.userid, req.body.title);
+    const newSession = new SessionModel({
+        createdby: req.body.userid,
+        title: req.body.title,
+        date: req.body.date,
+        teams: req.body.teams,
+        code: generateUID(),
  
-    memory.sessions.push(session);
 
-  res.json({ message: 'Game hosted successfully!', sessionId });
-});
+    })
+    const newUser = new userModel({
+        username: req.body.username,
+        uimg: req.body.uimg,
+        userid: req.body.userid,
 
-app.get('/join/:gameId/:teamName/:playerName', (req, res) => {
-  const gameId = parseInt(req.params.gameId);
-  const teamName = req.params.teamName;
-  const playerName = req.params.playerName;
 
+ 
+
+    })
+    newUser.save().then((user) => {
+        newSession.save().then((session) => {
+            res.json(session);
+        }
+        )})
   
-  const game = gameData.games.find((g) => g.id === gameId);
-
-  if (game) {
     
-    let team = game.teams.find((t) => t.name === teamName);
-    if (!team) {
-      
-      team = new Team(teamName);
-      game.addTeam(team);
+    .catch((err) => {
+        res.status(500).send(err.message);
+    })
+
+ });
+ async function getQuestions(sessionid){
+    const questions = await questionModel.find({
+        sessionid: sessionid
+      });
+      return questions
+ }
+ app.post('/api/get_session', (req, res) => {
+    const {userid,sessionid} = req.body
+    SessionModel.findById(sessionid).then(async (session) => {
+       const questions = await getQuestions(sessionid)
+         const usersessions = await getUserSessionsAndTeams(sessionid)
+            res.json({usersession:usersessions,session:session,questions:questions})
+        
+   
+    })
+ 
+   
+
+ });
+ app.post('/api/get_user_session', (req, res) => {
+    const {userid,sessionid} = req.body
+    res.json(getUserSessionsAndTeams(sessionid))
+   
+
+ });
+ app.post('/api/create_question', (req, res) => {
+    const {userid,sessionid,question,answers,correct} = req.body
+
+    const newQuestion = new questionModel({
+        question: question,
+        answers: answers,
+        correct: correct,
+        sessionid: sessionid,
+ 
+
+    
+    })
+    newQuestion.save().then((question) => {
+        SessionModel.findById(sessionid).then(async (session) => {
+            const questions = await getQuestions(sessionid)
+            const usersessions = await getUserSessionsAndTeams(sessionid)
+            res.json({usersession:usersessions,session:session,questions:questions})
+        
+         })
     }
+    ).catch((err) => {
+        res.status(500).send(err.message);
+    })
+  
+   
 
+ });
+ app.post('/api/create_user', (req, res) => {
+    const newUser = new userModel({
+        username: req.body.username,
+        uimg: req.body.uimg,
+        userid: req.body.userid,
+
+ 
+
+    })
+    newUser.save().then((user) => {
+        res.json(user);
+    }
+    ).catch((err) => {
+        res.status(500).send(err.message);
+    })
+
+    })
+  
+
+ 
+ 
+app.post('/api/join_session', (req, res) => {
+    const {userid,code} = req.body
+    SessionModel.findOne({
+        code:code
+    }).then(session=>{
+        const usersession = new SessionUserModel({
+            userid: userid,
+            sessionid: session._id,
+      
+            date: Date.now()
     
-    const player = new Player(game.teams.length * 10 + team.players.length + 1, playerName, teamName);
-    team.addPlayer(player);
+        })
+        usersession.save().then( async (session_) => {
+            const newUser = new userModel({
+                username: req.body.username,
+                uimg: req.body.uimg,
+                userid: req.body.userid,
+        
+         
+            
+            })
+            newUser.save().then(async (user) => {
+                const questions = await getQuestions(session._id)
+                const usersessions = await getUserSessionsAndTeams(session._id)
+                res.json({usersession:usersessions,session:session,questions:questions})
+            }
+            ).catch((err) => {
+                res.status(500).send(err.message);
+            })
+        
+        }
+        ).catch((err) => {
+            res.status(500).send(err.message);
+        })
 
-    res.json({ message: `${playerName} joined team ${teamName} in Game ${gameId} successfully!` });
-  } else {
-    res.status(404).json({ message: 'Game not found!' });
-  }
-});
-app.post('/join_session/:sessionId', (req, res) => {
-    const {userId} = req.body
+    })
 })
-app.post('/game/:gameId/buzz', (req, res) => {
-  const gameId = parseInt(req.params.gameId);
-  const teamName = req.body.teamName;
-  const playerName = req.body.playerName;
-
-  
-  const game = gameData.games.find((g) => g.id === gameId);
-
-  if (game) {
-    
-    const player = game.teams
-      .flatMap((team) => team.players)
-      .find((p) => p.name === playerName && p.team === teamName);
-
-    if (player) {
-      
-      game.handleBuzz(player);
-
-      res.json({ message: `${playerName} from ${teamName} buzzed in Game ${gameId}!` });
-    } else {
-      res.status(404).json({ message: 'Player not found!' });
-    }
-  } else {
-    res.status(404).json({ message: 'Game not found!' });
-  }
-});
-
-app.get('/game/:gameId', (req, res) => {
-  const gameId = parseInt(req.params.gameId);
-
-  
-  const game = gameData.games.find((g) => g.id === gameId);
-
-  if (game) {
-    const gameDetails = {
-      teams: game.teams,
-      buzzOrder: game.buzzOrder,
-      currentQuestion: game.currentQuestion,
-    };
-    res.json(gameDetails);
-  } else {
-    res.status(404).json({ message: 'Game not found!' });
-  }
-});
+ 
 app.get('/images', (req, res) => {
     
 

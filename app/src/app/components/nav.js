@@ -3,11 +3,13 @@ import '../styles/nav.scss'
 import logo from '../assets/logo.png'
 import Link from 'next/link'
 import { wrapImg } from '../services/utils'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
+import { AuthContext } from '../context/AuthContext'
 
 export default function Nav({image}){
  
     const [profile,setProfile] = useState(null)
+    const {username,uimg} = useContext(AuthContext)
     useEffect(()=>{
  
      
@@ -26,25 +28,22 @@ export default function Nav({image}){
             <div className="profile">    
 
             {
-            localStorage.profileimg && image?
+            uimg&&
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
                 <div className="profile-img">
-                    <img src={wrapImg(image)}/>
+                    <img src={wrapImg(uimg)}/>
+                   
 
-                </div>:
-                  <div className="profile-img">
-                  <img src={wrapImg(localStorage.profileimg)}/>
-
-              </div>
+                </div> 
                           }  
            
                 {
 
-localStorage.username&&
+ username&&
                 
                 <div className="profile-name">
                     <label>
-                        {localStorage.username}
+                        {username}
                     </label>
                 </div>
                 }

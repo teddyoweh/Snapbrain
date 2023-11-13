@@ -1,5 +1,5 @@
 .host{
-    background:linear-gradient(182deg, rgb(222 218 255), rgb(183 174 255));
+    background:var(--background);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -90,7 +90,9 @@
             background-color: #341a7c12;
             margin-bottom: 20px;
             width: 30%;
-        
+            &.number{
+                width: 10%;
+            }
             
             input{
                 background-color: transparent;

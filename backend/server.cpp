@@ -51,8 +51,6 @@ public:
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_addr.s_addr = INADDR_ANY;
         serverAddr.sin_port = htons(port_);
-
-          // Check the result of the bind operation
         if (::bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
             std::cerr << "Error on binding" << std::endl;
             close(serverSocket);
