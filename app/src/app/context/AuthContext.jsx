@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
  
 import { Js } from 'iconsax-react';
+import { WebSocketClient } from '../config/socket';
 
 function Loading() {
   return (
@@ -20,13 +21,13 @@ export function AuthProvider({ children }) {
 const [username,setUsername] = useState(localStorage.getItem('username'))
   const router = useRouter();
 
-  
+  const webSocketClient = new WebSocketClient();
 
  
   
 
   return (
-    <AuthContext.Provider value={{ username, userid,uimg,setUimg,setUsername  }}>
+    <AuthContext.Provider value={{ username, userid,uimg,setUimg,setUsername,webSocketClient  }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,6 +10,7 @@ const sessionUserSchema = new mongoose.Schema({
         default: Date.now
     
     },
+ 
    
 });
 const SessionUserModel = mongoose.model('SessionUser', sessionUserSchema);

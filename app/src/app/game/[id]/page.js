@@ -3,14 +3,15 @@ import { useParams, useRouter } from "next/navigation"
 import Nav from "../../components/nav"
 import "../../styles/game.scss"
 import MicroServiceClient from "@/app/services/api"
-import { useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { Add,ArrowRight2,ArrowLeft2,Copy,CopySuccess,Minus } from "iconsax-react"
 import { useDrag, useDrop } from 'react-dnd';
  
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AuthContext } from "@/app/context/AuthContext"
-const Question = ({ question, index, selectedQuestion, setSelectedQuestion, moveQuestion }) => {
+import { socketip } from "@/app/config/ip"
+const Question = ({ question, index, selectedQuestion, handleSetQuestion, setSelectedQuestion, moveQuestion }) => {
     const [, drag] = useDrag({
       type: 'QUESTION',
       item: { index },
@@ -31,7 +32,7 @@ const Question = ({ question, index, selectedQuestion, setSelectedQuestion, move
       <div
         ref={(node) => drag(drop(node))}
         onClick={() => {
-          setSelectedQuestion(index);
+       handleSetQuestion(index)
         }}
         className={`question ${isActive ? 'active' : ''}`}
       >
@@ -66,7 +67,7 @@ function RenderTeamBox(id,session){
 
     )
 }
-function RenderPostQuestions({ sessiondata, setSelectedQuestion,selectedQuestion }) {
+function RenderPostQuestions({ sessiondata,  handleSetQuestion,setSelectedQuestion,selectedQuestion }) {
     const [questions, setQuestions] = useState(sessiondata.questions);
   
     const moveQuestion = (fromIndex, toIndex) => {
@@ -81,6 +82,7 @@ function RenderPostQuestions({ sessiondata, setSelectedQuestion,selectedQuestion
         <div className="question-queue">
           {questions.map((question, index) => (
             <Question
+            handleSetQuestion={handleSetQuestion}
               key={index}
               question={shortenString(question.question)}
               index={index}
@@ -103,7 +105,8 @@ export default function GamePage(){
         MicroServiceClient.getSession({sessionid:id}).then((session)=>{
             console.log(session)
             setSessiondata(session)
-            setSelectedQuestion(0)
+            setSelectedQuestion(session.session.activeQuestion)
+            setGameState(session.session.stat)
     
     
         })
@@ -115,6 +118,61 @@ export default function GamePage(){
     
     },[])
     const {userid} = useContext(AuthContext)
+    const [answer,setAnswer] = useState(null)
+    const socketRef = useRef(null);
+    function answerQuestion(answer,team){
+        if(sessiondata.session.createdby!=userid){
+        MicroServiceClient.answerQuestion({userid,session:id,questionid:sessiondata.questions[selectedQuestion]._id,answer,team}).then((res)=>{
+            console.log(res)
+            setAnswer(answer+1)
+        })}
+    }
+    useEffect(() => {
+        socketRef.current = new WebSocket(`${socketip}?userId=${userid}&sessionId=${id}`);
+
+        socketRef.current.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'update_stat') {
+                setGameState(data.data.stat);
+                setSelectedQuestion(data.data.activeQuestion);
+         
+            }
+            else if (data.type === 'update_question') {
+                setSelectedQuestion(data.data.activeQuestion);
+            }
+        });
+
+        return () => {
+            socketRef.current.close();
+        };
+    }, [id, userid]);
+
+    const handleChangeGameState = useCallback(() => {
+        if (socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'update_stat',
+                data:{
+                    stat:!gameState,
+            
+                }  
+            }));
+            setGameState(!gameState);
+        }
+    }, [gameState]);
+    const handleSetQuestion = useCallback((index) => {
+        if (socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'update_question',
+                data:{
+               
+                    activeQuestion:index
+                }  
+            }));
+            setSelectedQuestion(index);
+        }
+    }, [gameState]);
+
      return (
         <DndProvider backend={HTML5Backend}>
 
@@ -166,7 +224,7 @@ export default function GamePage(){
                     <div className="bxax">
 
                     {
-                        sessiondata.questions.length>0?
+                       gameState&& sessiondata.questions.length>0?
                  
                     <div className="active-question">
                         <label className="question_test" htmlFor="">
@@ -177,11 +235,11 @@ export default function GamePage(){
                         </label>
                         <div className="answers">
                             {
-                                 sessiondata.questions[selectedQuestion]?.answers.map((answer,index)=>{
+                                 sessiondata.questions[selectedQuestion]?.answers.map((answer_,index)=>{
                                     return (
-                                        <div className="answer">
+                                        <div className={answer==index+1?"answer active":"answer"} key={index} onClick={()=>answerQuestion(index+1,0)}>
                                             <label htmlFor="">
-                                              ({String.fromCharCode(64 + answer.id)})  {answer.value}
+                                              ({String.fromCharCode(64 + answer_.id)})  {answer_.value}
                                             </label>
                                         </div>
                                     )
@@ -201,7 +259,7 @@ export default function GamePage(){
                 
                     <div className="dmx">
                         <div className="next" onClick={()=>{
-                            setSelectedQuestion((selectedQuestion - 1) % sessiondata.questions.length)
+                            handleSetQuestion((selectedQuestion - 1) % sessiondata.questions.length)
                         }
                         }>
                             <ArrowLeft2 size="22" color="#341a7c"  />
@@ -210,7 +268,7 @@ export default function GamePage(){
                         >
                             <div className={!gameState?"state_indicator correct":"state_indicator pause"}
                             onClick={()=>{
-                                setGameState(!gameState)
+                                handleChangeGameState()
                             
                             }}
                             >
@@ -224,7 +282,7 @@ export default function GamePage(){
 
                         </div>
                     <div className="next" onClick={()=>{
-                      setSelectedQuestion((selectedQuestion + 1) % sessiondata.questions.length)
+                      handleSetQuestion((selectedQuestion + 1) % sessiondata.questions.length)
                     }}>
                     <ArrowRight2 size="22" color="#341a7c"/>
                         </div>
@@ -304,7 +362,7 @@ export default function GamePage(){
                             </div>
                             </div>
                    
-                            <RenderPostQuestions sessiondata={{ questions: [...sessiondata.questions] }} selectedQuestion={selectedQuestion}setSelectedQuestion={setSelectedQuestion} />
+                            <RenderPostQuestions handleSetQuestion={handleSetQuestion} sessiondata={{ questions: [...sessiondata.questions] }} selectedQuestion={selectedQuestion}setSelectedQuestion={setSelectedQuestion} />
 
                     </div>
                 </div>}

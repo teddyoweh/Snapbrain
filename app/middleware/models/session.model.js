@@ -11,6 +11,16 @@ const sessionSchema = new mongoose.Schema({
         default: Date.now
     
     },
+    stat: {
+    
+     
+    
+    },
+    activeQuestion: {
+        type: Number,
+        default: 0
+    
+    },
    
 });
 const SessionModel = mongoose.model('Session', sessionSchema);

@@ -14,6 +14,10 @@ const SessionModel = require('./models/session.model');
 const userModel = require('./models/user.model');
 const SessionUserModel = require('./models/session.user.model');
 const questionModel = require('./models/questions.model');
+const { WebSocketServer } = require('ws');
+const snapSocket = require('./socket');
+const { Js } = require('iconsax-react');
+const userAnswerModel = require('./models/user.answers.model');
 const config = {
     DB: process.env.MONGODB
       
@@ -203,7 +207,25 @@ app.post('/api/create_session', (req, res) => {
 
     })
   
-
+    app.post('/api/answer_question', (req, res) => {
+        const newUser = new userAnswerModel({
+           
+            userid: req.body.userid,
+            sessionid: req.body.sessionid,
+            questionid: req.body.questionid,
+            answerNumber: req.body.answer,
+            team: req.body.team,
+    
+        })
+        newUser.save().then((user) => {
+            res.json(user);
+        }
+        ).catch((err) => {
+            res.status(500).send(err.message);
+        })
+    
+        })
+      
  
  
 app.post('/api/join_session', (req, res) => {
@@ -252,5 +274,77 @@ app.get('/images', (req, res) => {
 app.use('/public', express.static('./images'));
 
 app.listen(PORT, () => {
+    const WebSocket = require('ws');
+    const http = require('http');
+    const url = require('url');
+    
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('WebSocket server\n');
+    });
+    
+    const wss = new WebSocket.Server({ server });
+    
+    wss.on('connection', (ws, req) => {
+      const userId = url.parse(req.url, true).query.userId;
+      const sessionId = url.parse(req.url, true).query.sessionId;
+      console.log(`User connected with ID: ${userId} to session ${sessionId}`);
+
+    
+    
+      ws.on('message', (message) => {
+        console.log(`Received message from user ${userId}: ${ message}`);
+        const { type, data } = JSON.parse(message);
+
+        if(type=="update_stat"){
+            SessionModel.findByIdAndUpdate(sessionId, { stat: data.stat}, { new: true })
+            .then((session) => {
+                console.log("Updated stat");
+            })
+        }
+       else if (type=="update_question"){
+            SessionModel.findByIdAndUpdate(sessionId, { activeQuestion: data.activeQuestion}, { new: true })
+            .then((session) => {
+                console.log("Updated question");
+            })
+        }
+      });
+   
+      const changeStream = SessionModel.watch({ fullDocument: 'updateLookup', filter: { '_id': sessionId } });
+
+
+  changeStream.on('change', async (change) => {
+     console.log("Change in session");
+      
+   const newDoc = await SessionModel.findById(sessionId);
+   console.log(newDoc.stat);
+    ws.send(JSON.stringify({
+        type: "update_stat",
+        data: {
+            stat: newDoc.stat,
+            activeQuestion:newDoc.activeQuestion
+
+        }
+    }));
+  });
+      ws.on('close', () => {
+        console.log(`User with ID ${userId} disconnected`);
+      });
+    });
+    
+    function broadcast(message, sender) {
+      wss.clients.forEach((client) => {
+        if (client !== sender && client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+    }
+    
+    const port = 3050;
+    server.listen(port, () => {
+      console.log(`Server is listening on port ${port}`);
+    });
+    
+
   console.log(`Server is running on port ${PORT}`);
 });

@@ -386,6 +386,7 @@
                         border-color: #3ce68f;
                         color: white;
                     }
+                  
                     &.wrong{
                         background-color: #ff3c3c;
                         border-color: #ff3c3c;
@@ -742,7 +743,9 @@
                     font-family: 'Poppins', sans-serif;
                     font-size: 14px;
                     color: #555;
+                    cursor: pointer;
                 }
+             
             }
         }
 
@@ -876,5 +879,19 @@
     &:hover{
         transition: 0.5s;
         transform: scale(1.1);
+    }
+}
+
+.active-question{
+    .answers{
+        .answer{
+            &.active{
+                background-color: #341a7c;
+                label{
+                    color: white;
+                
+                }
+            }
+        }
     }
 }

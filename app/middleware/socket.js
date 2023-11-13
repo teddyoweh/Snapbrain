@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-class WebSocketServer {
+class snapSocket {
   constructor() {
     this.server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -43,5 +43,4 @@ class WebSocketServer {
   }
 }
 
-const webSocketServer = new WebSocketServer();
-webSocketServer.start(3000);
+module.exports = snapSocket;

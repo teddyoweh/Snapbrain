@@ -70,6 +70,15 @@ async addQuestion(data) {
       throw error;
     }
   }
+  async answerQuestion(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.answer_question, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
+  }
 }
 
  
