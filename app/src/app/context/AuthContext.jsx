@@ -22,13 +22,12 @@ export function AuthProvider({ children }) {
   
   const router = useRouter();
 
-  const webSocketClient = new WebSocketClient();
-
+ 
  
   
 
   return (
-    <AuthContext.Provider value={{ username, userid,uimg,setUimg,setUsername,webSocketClient  }}>
+    <AuthContext.Provider value={{ username, userid,uimg,setUimg,setUsername  }}>
       {children}
     </AuthContext.Provider>
   );

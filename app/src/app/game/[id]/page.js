@@ -121,11 +121,22 @@ export default function GamePage(){
     const [answer,setAnswer] = useState(null)
     const socketRef = useRef(null);
     function answerQuestion(answer,team){
+      
         if(sessiondata.session.createdby!=userid){
+            if(answer==null ){
+
+    
         MicroServiceClient.answerQuestion({userid,session:id,questionid:sessiondata.questions[selectedQuestion]._id,answer,team}).then((res)=>{
             console.log(res)
-            setAnswer(answer+1)
-        })}
+     
+            setAnswer(answer)
+        })}    
+        else{
+            alert("You can only answer one question at a time")
+        
+        }
+    }
+        
     }
     useEffect(() => {
         socketRef.current = new WebSocket(`${socketip}?userId=${userid}&sessionId=${id}`);
@@ -140,6 +151,9 @@ export default function GamePage(){
             }
             else if (data.type === 'update_question') {
                 setSelectedQuestion(data.data.activeQuestion);
+            }
+            else if (data.type === 'update_answer') {
+                setAnswer(data.data.activeQuestion);
             }
         });
 

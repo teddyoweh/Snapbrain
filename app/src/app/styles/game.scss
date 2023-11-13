@@ -885,8 +885,13 @@
 .active-question{
     .answers{
         .answer{
+            cursor: pointer;
+            label{
+                cursor: pointer;
+            
+            }
             &.active{
-                background-color: #341a7c;
+                background-color: #341a7c !important;
                 label{
                     color: white;
                 

@@ -327,6 +327,24 @@ app.listen(PORT, () => {
         }
     }));
   });
+
+  const changeStream1 = userAnswerModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId,userid:userId } });
+
+
+  changeStream1.on('change', async (change) => {
+     console.log("Change in session");
+      
+   const newDoc = await userAnswerModel.findOne({sessionid:sessionId,userid:userId});
+   console.log(newDoc.stat);
+    ws.send(JSON.stringify({
+        type: "update_answer",
+        data: {
+            stat: newDoc.stat,
+            activeQuestion:newDoc.activeQuestion
+
+        }
+    }));
+  });
       ws.on('close', () => {
         console.log(`User with ID ${userId} disconnected`);
       });
