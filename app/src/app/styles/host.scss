@@ -122,3 +122,17 @@
     display: inline-block;
     animation: vibrate 0.3s ease-in-out 3;
   }
+
+  .row{
+    
+    display: flex;
+    flex-direction: row;
+    div{
+        width: 100%;
+
+        .input-box{
+            margin-top: 8px;
+            width: 80% !important;
+        }
+    }
+  }

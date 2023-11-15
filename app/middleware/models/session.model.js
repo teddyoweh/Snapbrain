@@ -21,6 +21,12 @@ const sessionSchema = new mongoose.Schema({
         default: 0
     
     },
+    maxNumnberTeam:{
+        type: Number,
+ 
+    
+
+    }
    
 });
 const SessionModel = mongoose.model('Session', sessionSchema);

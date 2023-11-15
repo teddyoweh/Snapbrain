@@ -30,7 +30,7 @@ async function sha256(text) {
 //   return hashHex;
 }
 
-async function checkId() {
+async function checkId(setUserId=null) {
 
     let userId = localStorage.getItem('userid');
 
@@ -38,7 +38,9 @@ async function checkId() {
       
       userId = await uniqueId_();
   
-
+      if (setUserId) {
+        setUserId(userId);
+      }
       localStorage.setItem('userid', userId);
     }
   

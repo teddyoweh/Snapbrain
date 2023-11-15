@@ -36,9 +36,23 @@ function RenderPostQuestions({session,sid,setdata,data}) {
                                     })
                                 }
                             </div>
+                            <label htmlFor="" className="pts-label">
+
+                                {question.point} pts
+                            </label>
                             <div className="correct-answer">
                                 <label htmlFor="">
                                   Answer:  {question.answers[question.correct-1].value} ({String.fromCharCode(64 + question.answers[question.correct-1].id)})
+                                </label>
+                            </div>
+                            <div className="delete-question" onClick={()=>{
+                                MicroServiceClient.deleteQuestion({questionid:question._id,sessionid:sid}).then((res)=>{
+                                    setdata(res)
+                                })
+                            }
+                            }>
+                                <label htmlFor="">
+                                    Delete
                                 </label>
                             </div>
                         </div>
@@ -64,6 +78,7 @@ function RenderAddQuestion({sid,setdata}) {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [questionPoint, setQuestionPoint] = useState(10);
 
 
     const handleAddQuestion = () => {
@@ -83,11 +98,19 @@ function RenderAddQuestion({sid,setdata}) {
             setError('Please choose a valid correct answer.');
             return;
         }
+        if(questionPoint==''||questionPoint==0){
+            setError('Please enter a valid question point.');
+            return;
+        }
 
-        MicroServiceClient.addQuestion({question,answers:Object.values(answers),correct:correctAnswer,sessionid:sid}).then((res)=>{
+        MicroServiceClient.addQuestion({question,answers:Object.values(answers),correct:correctAnswer,sessionid:sid,point:questionPoint}).then((res)=>{
             console.log(res)
             setdata(res)
             setSuccess("Question Added")
+            setQuestion('')
+            setAnswers([{ id: 1, value: '' }])
+            setCorrectAnswer('')
+
             setTimeout(()=>{
                 setSuccess(null)
             },3000)
@@ -161,11 +184,28 @@ function RenderAddQuestion({sid,setdata}) {
                 ✓
                 </div>
                 </div>
-            ))}
-            <div className="addanswer" onClick={handleAddAnswer}>
+
+
+       
+            ))}    
+             <div className="addanswer" onClick={handleAddAnswer}>
                 <Add size="20" />
                 Add Answer
             </div>
+                            <div className="qp-col">
+                                <label htmlFor="">
+                                    Question Point
+                                </label>
+             <div  className="input-box">
+                    <input
+                        type="number"
+                        placeholder={"Question Point eg: 10"}
+                        value={questionPoint}
+                        onChange={(e) => setQuestionPoint(  e.target.value)}
+                    />
+                    </div>
+                    </div>
+           
           
             <div className="bxtn" onClick={handleAddQuestion}>
                 Add Question

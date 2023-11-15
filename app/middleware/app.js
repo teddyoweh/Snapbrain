@@ -18,6 +18,7 @@ const { WebSocketServer } = require('ws');
 const snapSocket = require('./socket');
 const { Js } = require('iconsax-react');
 const userAnswerModel = require('./models/user.answers.model');
+const leaderboardModel = require('./models/leaderboard.model');
 const config = {
     DB: process.env.MONGODB
       
@@ -106,49 +107,125 @@ app.get('/', (req, res) => {
     res.send('Hello World!');
     });
 
-app.post('/api/create_session', (req, res) => {
-    const newSession = new SessionModel({
-        createdby: req.body.userid,
-        title: req.body.title,
-        date: req.body.date,
-        teams: req.body.teams,
-        code: generateUID(),
- 
-
-    })
-    const newUser = new userModel({
-        username: req.body.username,
-        uimg: req.body.uimg,
-        userid: req.body.userid,
-
-
- 
-
-    })
-    newUser.save().then((user) => {
-        newSession.save().then((session) => {
-            res.json(session);
-        }
-        )})
-  
+    app.post('/api/create_session', async (req, res) => {
+        try {
+             const existingUser = await userModel.findOne({ userid: req.body.userid });
     
-    .catch((err) => {
-        res.status(500).send(err.message);
-    })
-
- });
+            if (existingUser) {
+ 
+                existingUser.username = req.body.username;
+                existingUser.uimg = req.body.uimg;
+                await existingUser.save();
+            } else {
+ 
+                const newUser = new userModel({
+                    username: req.body.username,
+                    uimg: req.body.uimg,
+                    userid: req.body.userid,
+                });
+    
+                await newUser.save();
+            }
+    
+      
+            const newSession = new SessionModel({
+                createdby: req.body.userid,
+                title: req.body.title,
+                date: req.body.date,
+                teams: req.body.teams,
+                maxNumnberTeam: req.body.maxper,
+                code: generateUID(),
+            });
+    
+    
+            const savedSession = await newSession.save();
+    
+ 
+            res.json(savedSession);
+        } catch (err) {
+ 
+            res.status(500).send(err.message);
+        }
+    });
  async function getQuestions(sessionid){
     const questions = await questionModel.find({
         sessionid: sessionid
       });
       return questions
  }
+ async function getLeaderboard(sessionid) {
+    try {
+        const leaderboardEntries = await leaderboardModel.find({ sessionid: sessionid });
+        const resultArray = [];
+
+        
+        const userTotalPointsMap = new Map();
+        const userTeamMap = new Map();
+
+        for (const entry of leaderboardEntries) {
+
+            const userAnswers = await userAnswerModel.find({
+                userid: entry.userid,
+                sessionid: sessionid,
+            });
+
+            userTeamMap.set(entry.userid, entry.team);
+            let totalPoints = 0;
+
+            for (const userAnswer of userAnswers) {
+                const question = await questionModel.findById(userAnswer.questionid);
+
+                if (question) {
+                    const isCorrect = userAnswer.answerNumber === question.correct;
+                    totalPoints += isCorrect ? question.point : 0;
+                }
+            }
+
+            // Update the total points for the user in the map
+            if (userTotalPointsMap.has(entry.userid)) {
+                userTotalPointsMap.set(entry.userid,  totalPoints);
+            } else {
+                userTotalPointsMap.set(entry.userid, totalPoints);
+            }
+        }
+
+        // Create the result array with aggregated user information
+        for (const [userid, totalPoints] of userTotalPointsMap.entries()) {
+            const user = await userModel.findOne({ userid: userid });
+            
+            const resultPerUser = {
+                user: {
+                    username: user.username,
+                    uimg: user.uimg,
+                    sessionid: sessionid,
+                    userid: userid,
+                    team: userTeamMap.get(userid),
+                 
+                },
+                leaderboard: {
+                    point: totalPoints,
+                    date: new Date(), // You can customize this as needed
+                },
+            };
+
+            resultArray.push(resultPerUser);
+        }
+
+        return resultArray;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+
  app.post('/api/get_session', (req, res) => {
     const {userid,sessionid} = req.body
     SessionModel.findById(sessionid).then(async (session) => {
        const questions = await getQuestions(sessionid)
          const usersessions = await getUserSessionsAndTeams(sessionid)
-            res.json({usersession:usersessions,session:session,questions:questions})
+            const leaderboard = await getLeaderboard(sessionid)
+            res.json({usersession:usersessions,session:session,questions:questions,leaderboard:leaderboard})
         
    
     })
@@ -156,6 +233,31 @@ app.post('/api/create_session', (req, res) => {
    
 
  });
+
+ app.post('/api/update_team_no', (req, res) => {
+    const {userid,sessionid,teamno} = req.body
+    SessionModel.findByIdAndUpdate(sessionid, { teams: teamno}, { new: true })
+    .then((session) => {
+        console.log("Updated team no");
+    })
+    .catch((err) => {
+        res.status(500).send(err.message);
+    });
+
+ })
+
+ app.post('/api/update_max_team_no', (req, res) => {
+    const {userid,sessionid,maxteamno} = req.body
+    SessionModel.findByIdAndUpdate(sessionid, { maxNumnberTeam: maxteamno}, { new: true })
+    .then((session) => {
+        console.log("Updated max team no");
+    })
+    .catch((err) => {
+        res.status(500).send(err.message);
+    });
+
+ })
+ 
  app.post('/api/get_user_session', (req, res) => {
     const {userid,sessionid} = req.body
     res.json(getUserSessionsAndTeams(sessionid))
@@ -163,13 +265,15 @@ app.post('/api/create_session', (req, res) => {
 
  });
  app.post('/api/create_question', (req, res) => {
-    const {userid,sessionid,question,answers,correct} = req.body
+    const {userid,sessionid,question,answers,correct,point} = req.body
 
     const newQuestion = new questionModel({
         question: question,
         answers: answers,
         correct: correct,
         sessionid: sessionid,
+        point:point,
+        
  
 
     
@@ -178,7 +282,9 @@ app.post('/api/create_session', (req, res) => {
         SessionModel.findById(sessionid).then(async (session) => {
             const questions = await getQuestions(sessionid)
             const usersessions = await getUserSessionsAndTeams(sessionid)
-            res.json({usersession:usersessions,session:session,questions:questions})
+            const leaderboard = await getLeaderboard(sessionid)
+
+            res.json({usersession:usersessions,session:session,questions:questions,leaderboard:leaderboard})
         
          })
     }
@@ -189,6 +295,47 @@ app.post('/api/create_session', (req, res) => {
    
 
  });
+
+ app.post('/api/delete_question', (req, res) => {
+    const {userid,sessionid,questionid} = req.body
+    questionModel.findByIdAndDelete(questionid).then((question) => {
+        SessionModel.findById(sessionid).then(async (session) => {
+            const questions = await getQuestions(sessionid)
+            const usersessions = await getUserSessionsAndTeams(sessionid)
+            res.json({usersession:usersessions,session:session,questions:questions})
+        
+         })
+    })
+ });
+ app.post('/api/get_buzz_data', async (req, res) => {
+    const { sessionid, questionid } = req.body;
+     try {
+        const usersData = await userAnswerModel.find({
+            sessionid: sessionid,
+            questionid: questionid,
+        });
+
+        const userIds = usersData.map(user => user.userid);
+
+        const userData = await userModel.find({ userid: { $in: userIds } });
+
+        console.log(usersData,"usersData");
+        const mergedUserData = userData.map(user => {
+            const answerData = usersData.find(u => u.userid === user.userid);
+            return {
+                ...user.toObject(), // Convert Mongoose document to plain JavaScript object
+                answerNumber: answerData ? answerData.answerNumber : null,
+                team: answerData ? answerData.team : null,
+                // Add other fields as needed
+            };
+        });
+        console.log(mergedUserData,"mergedUserData");
+        res.json({ usersData: mergedUserData });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
  app.post('/api/create_user', (req, res) => {
     const newUser = new userModel({
         username: req.body.username,
@@ -208,24 +355,56 @@ app.post('/api/create_session', (req, res) => {
     })
   
     app.post('/api/answer_question', (req, res) => {
-        const newUser = new userAnswerModel({
-           
-            userid: req.body.userid,
-            sessionid: req.body.sessionid,
-            questionid: req.body.questionid,
-            answerNumber: req.body.answer,
-            team: req.body.team,
+        const { userid, session, questionid, answer, team } = req.body;
+        
+        userAnswerModel.findOne({ userid: userid, sessionid: session, questionid: questionid })
+        .then((existingUser)=> {
+            if (existingUser) {
+                return res.status(400).send("User with the provided userid already exists");
+            } else {
+                const newUserAnswer = new userAnswerModel({
+                    userid: userid,
+                    sessionid: session,
+                    questionid: questionid,
+                    answerNumber: answer,
+                    team: team,
+                });
     
-        })
-        newUser.save().then((user) => {
-            res.json(user);
-        }
-        ).catch((err) => {
-            res.status(500).send(err.message);
-        })
+                newUserAnswer.save()
+                .then(() => {
+                     questionModel.findById(questionid)
+                    .then((question) => {
+                        if (!question) {
+                            return res.status(404).send("Question not found");
+                        }
     
-        })
-      
+                        const isCorrect = (answer === question.correct);
+                        const point = isCorrect ? question.point : 0;
+    
+                        leaderboardModel.findOneAndUpdate(
+                            { userid: userid, questionid: questionid, sessionid: session, team: team },
+                            { $inc: { point: point }, $set: { group: team } },
+                            { upsert: true, new: true }
+                        )
+                        .then((leaderboardEntry) => {
+                            res.json({ userAnswer: newUserAnswer, leaderboardEntry: leaderboardEntry });
+                        })
+                        .catch((err) => {
+                            res.status(500).send(err.message);
+                        });
+                    })
+                    .catch((err) => {
+                        res.status(500).send(err.message);
+                    });
+                })
+                .catch((err) => {
+                    res.status(500).send(err.message);
+                });
+            }
+        });
+    });
+    
+    
  
  
 app.post('/api/join_session', (req, res) => {
@@ -308,6 +487,24 @@ app.listen(PORT, () => {
                 console.log("Updated question");
             })
         }
+        else if (type=="update_teamno"){
+            SessionModel.findByIdAndUpdate(sessionId, { teams: data.teamno}, { new: true })
+            .then((session) => {
+                console.log("Updated team no");
+            })
+            .catch((err) => {
+                res.status(500).send(err.message);
+            });
+        }
+        else if (type=="update_max_teamno"){
+            SessionModel.findByIdAndUpdate(sessionId, { maxNumnberTeam: data.maxteamno}, { new: true })
+    .then((session) => {
+        console.log("Updated max team no");
+    })
+    .catch((err) => {
+        res.status(500).send(err.message);
+    });
+        }
       });
    
       const changeStream = SessionModel.watch({ fullDocument: 'updateLookup', filter: { '_id': sessionId } });
@@ -317,34 +514,76 @@ app.listen(PORT, () => {
      console.log("Change in session");
       
    const newDoc = await SessionModel.findById(sessionId);
+//    const questions = await getQuestions(sessionId)
+//    const usersessions = await getUserSessionsAndTeams(sessionId)
+//    const leaderboard = await getLeaderboard(sessionId)
+
+//    const resx = {usersession:usersessions,session:newDoc,questions:questions,leaderboard:leaderboard}
+
    console.log(newDoc.stat);
     ws.send(JSON.stringify({
         type: "update_stat",
         data: {
             stat: newDoc.stat,
-            activeQuestion:newDoc.activeQuestion
+            activeQuestion:newDoc.activeQuestion,
+            // newDoc:resx
 
         }
     }));
   });
-
+  const changeStream0 = leaderboardModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId } });
+  changeStream0.on('change', async (change) => {
+    console.log("Change in leaderboard session");
+    const leaderboard = await getLeaderboard(sessionId)
+ 
+    ws.send(JSON.stringify({
+        type: "update_leaderboard",
+        data: {
+            leaderboard
+        },
+    }));
+});
   const changeStream1 = userAnswerModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId,userid:userId } });
 
-
   changeStream1.on('change', async (change) => {
-     console.log("Change in session");
-      
-   const newDoc = await userAnswerModel.findOne({sessionid:sessionId,userid:userId});
-   console.log(newDoc.stat);
+    console.log("Change in userAnswerModel session");
+    console.log(change.fullDocument.userid);
+
+     const usersData = await userAnswerModel.find({
+        sessionid: change.fullDocument.sessionid,
+        questionid: change.fullDocument.questionid,
+    });
+
+    const userIds = usersData.map(user => user.userid);
+
+    const userData = await userModel.find({ userid: { $in: userIds } });
+
+    console.log(usersData,"usersData");
+    const mergedUserData = userData.map(user => {
+        const answerData = usersData.find(u => u.userid === user.userid);
+        return {
+            ...user.toObject(), 
+            answerNumber: answerData ? answerData.answerNumber : null,
+            team: answerData ? answerData.team : null,
+         };
+    });
+    let answer;
+    for (let i = 0; i < usersData.length; i++) {
+        if(usersData[i].userid==userId){
+            answer=usersData[i].answerNumber
+        }
+    }
+    
+ 
     ws.send(JSON.stringify({
         type: "update_answer",
         data: {
-            stat: newDoc.stat,
-            activeQuestion:newDoc.activeQuestion
-
-        }
+            activeQuestion: answer,
+            usersData: mergedUserData
+        },
     }));
-  });
+});
+ 
       ws.on('close', () => {
         console.log(`User with ID ${userId} disconnected`);
       });

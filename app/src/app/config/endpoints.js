@@ -5,6 +5,10 @@ export const endpoints = {
     "get_user_session": "/api/get_user_session",
     "add_question": "/api/create_question",
     "answer_question": "/api/answer_question",
+    "get_buzz_data": "/api/get_buzz_data",
+    "delete_question": "/api/delete_question",
+    "update_team_no": "/api/update_team_no",
+    "update_max_team_no": "/api/update_max_team_no",
     "images": "/images",
 
 }

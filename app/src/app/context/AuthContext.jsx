@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
  
 import { Js } from 'iconsax-react';
 import { WebSocketClient } from '../config/socket';
+import { checkId } from '../services/utils';
 
 function Loading() {
   return (
@@ -22,6 +23,9 @@ export function AuthProvider({ children }) {
   
   const router = useRouter();
 
+  useEffect(() => {
+    checkId();
+  }, []);
  
  
   

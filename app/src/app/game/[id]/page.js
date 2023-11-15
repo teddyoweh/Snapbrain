@@ -11,6 +11,14 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AuthContext } from "@/app/context/AuthContext"
 import { socketip } from "@/app/config/ip"
+import { wrapImg } from "@/app/services/utils"
+ 
+function convertTimestampToTime(timestamp) {
+    const date = new Date(timestamp);
+    const timeString = date.toLocaleTimeString([], { hour12: true });
+
+    return timeString;
+}
 const Question = ({ question, index, selectedQuestion, handleSetQuestion, setSelectedQuestion, moveQuestion }) => {
     const [, drag] = useDrag({
       type: 'QUESTION',
@@ -41,7 +49,7 @@ const Question = ({ question, index, selectedQuestion, handleSetQuestion, setSel
     );
   };
   
-function shortenString(str, maxLength = 24) {
+function shortenString(str, maxLength = 34) {
     if (str.length <= maxLength) {
         return str;
     } else {
@@ -107,6 +115,9 @@ export default function GamePage(){
             setSessiondata(session)
             setSelectedQuestion(session.session.activeQuestion)
             setGameState(session.session.stat)
+            setLeaderboardData(session.leaderboard)
+            setmaxNumnberTeam(session.session.maxNumnberTeam)
+            setTeams(session.session.teams)
     
     
         })
@@ -117,24 +128,52 @@ export default function GamePage(){
         getData()
     
     },[])
+    function groupByTeam(leaderboardData) {
+        const teamMap = new Map();
+    
+        for (const entry of leaderboardData) {
+            const team = entry.user.team;
+    
+            if (!teamMap.has(team)) {
+                teamMap.set(team, []);
+            }
+    
+            teamMap.get(team).push(entry);
+        }
+    
+        const groupedData = [];
+        for (const [team, entries] of teamMap) {
+            groupedData.push({
+                team: team,
+                entries: entries,
+            });
+        }
+    
+        return groupedData;
+    }
+    
     const {userid} = useContext(AuthContext)
     const [answer,setAnswer] = useState(null)
+    const [buzz_data,setBuzzData] = useState([])
     const socketRef = useRef(null);
+    const [leaderboarddata,setLeaderboardData] = useState(null)
+    const [maxNumnberTeam,setmaxNumnberTeam] = useState(null)
+    const [teams,setTeams] = useState(null)
     function answerQuestion(answer,team){
       
         if(sessiondata.session.createdby!=userid){
-            if(answer==null ){
-
+        
     
         MicroServiceClient.answerQuestion({userid,session:id,questionid:sessiondata.questions[selectedQuestion]._id,answer,team}).then((res)=>{
             console.log(res)
      
-            setAnswer(answer)
-        })}    
-        else{
-            alert("You can only answer one question at a time")
-        
+            // setAnswer(answer)
+        }) 
+        .catch((err)=>{
+            console.log(err)
+            alert("You have already answered this question")
         }
+        )
     }
         
     }
@@ -147,13 +186,28 @@ export default function GamePage(){
             if (data.type === 'update_stat') {
                 setGameState(data.data.stat);
                 setSelectedQuestion(data.data.activeQuestion);
+                setAnswer(null)
+                
+           
          
             }
             else if (data.type === 'update_question') {
                 setSelectedQuestion(data.data.activeQuestion);
+                setAnswer(null)
+            }
+            else if (data.type === 'update_leaderboard') {
+               setLeaderboardData(data.data.leaderboard)
+                setAnswer(null)
             }
             else if (data.type === 'update_answer') {
                 setAnswer(data.data.activeQuestion);
+                console.log(data.data.activeQuestion,'answer')
+              console.log(data.data.usersData)
+                    setBuzzData([...new Set( data.data.usersData)])
+                
+            }
+            else if (data.type === 'update_buzz') {
+              ;
             }
         });
 
@@ -161,7 +215,20 @@ export default function GamePage(){
             socketRef.current.close();
         };
     }, [id, userid]);
-
+    function getBuzzData(){
+        MicroServiceClient.getBuzzData({sessionid:id,questionid:sessiondata.questions[selectedQuestion]?._id}).then((res)=>{
+            setBuzzData(res.usersData)
+        })
+    } 
+    useEffect(()=>{
+        if(sessiondata&&selectedQuestion!=null){
+            getBuzzData()
+        }
+    },[sessiondata,selectedQuestion])
+    useEffect(()=>{
+       setAnswer(null)
+    },[selectedQuestion])
+    
     const handleChangeGameState = useCallback(() => {
         if (socketRef.current) {
             socketRef.current.send(JSON.stringify({
@@ -175,6 +242,7 @@ export default function GamePage(){
         }
     }, [gameState]);
     const handleSetQuestion = useCallback((index) => {
+        setAnswer(null)
         if (socketRef.current) {
             socketRef.current.send(JSON.stringify({
                 type: 'update_question',
@@ -186,7 +254,21 @@ export default function GamePage(){
             setSelectedQuestion(index);
         }
     }, [gameState]);
+    const leaderboardoptions = ["Group","Individual"]
+    const [leaderboardoption,setLeaderboardOption] = useState(leaderboardoptions[0])
+    const handleTeamsChange = useCallback((value)=>{
+        if (socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'update_teamno',
+                data:{
+               
+                    teamno:value
+                }  
+            }));
+          
+        }
 
+    })
      return (
         <DndProvider backend={HTML5Backend}>
 
@@ -315,51 +397,48 @@ export default function GamePage(){
                  </label>
                  </div>
                     <div className="user-queue">
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
-                        <div className="user">
-                            <label htmlFor="">
-                                Teddy Oweh
-                            </label>
-                        </div>
+                        {
+                            buzz_data.reverse().map((buzz,index)=>{
+                                return (
+                                    <div key={index} className="user">
+                                        <div className="left">
+
+                                        <label className="date" htmlFor="">
+                                                {convertTimestampToTime(buzz.date)}
+                                          
+                                            </label>
+                                        <img src={wrapImg(buzz.uimg)} alt=""/>
+                                        <label htmlFor="">
+                                            {buzz.username}
+                                        </label>
+                                        <span>
+                                            Group {buzz.team}
+                                        </span>
+                                        </div>
+                                        <div className="right">
+                                            <label htmlFor="">
+                                                {String.fromCharCode(64 +buzz.answerNumber)}
+                                            </label>
+                                           <div className="ansx">
+                                           
+                                            {buzz.answerNumber==sessiondata.questions[selectedQuestion].correct?
+                                            
+                                            <div className="correct">
+                                      
+                                              
+                                            </div>
+                                            :
+                                            <div className="wrong">
+                                               
+                                            </div>
+                                                }
+                                           </div>
+                                        </div>
+                                       
+                                    </div>
+                                )
+                            })
+                        }
                     </div>
                     </div>
                     <div className="col">
@@ -397,22 +476,129 @@ export default function GamePage(){
                 }
                 {
                     sessiondata.session.createdby==userid&&
-              
+              <div className="add-team">
+                <label htmlFor="" className="title">
+                     Team Count
+                </label>
+                <div className="user-count-box">
+                        <div className="icon"
+                        onClick={()=>{
+                            handleTeamsChange(teams-1)
+                        }}
+                        >
+                            <Add size="18" color="#341a7c"/>
+                        </div>
+                        <label htmlFor="">
+                            {
+                               teams
+                            }
+                        </label>
+                        <div className="icon" onClick={()=>{
+                            handleTeamsChange(teams-1)
+                        }} >
+                            <Minus size="18" color="#341a7c"/>
+                        </div>
+                </div>
+                <div className="add-team-btn">
+                <label htmlFor="" className="title">
+                    Max User Per Team
+                </label>
                 <div className="user-count-box">
                         <div className="icon">
                             <Add size="18" color="#341a7c"/>
                         </div>
                         <label htmlFor="">
                             {
-                               sessiondata.session.teams
+                               maxNumnberTeam
                             }
                         </label>
                         <div className="icon">
                             <Minus size="18" color="#341a7c"/>
                         </div>
                 </div>
+                </div>
+            </div>
 }
             </div>
+        </div>
+        <div className="leaderboard-box">
+            <label htmlFor="" className="title">
+
+                Leaderboard
+            </label>
+            <div className="options">
+            {
+                leaderboardoptions.map((option,index)=>{
+                    return (
+                        <div key={index} className={leaderboardoption==option?"option active":"option"} onClick={()=>{
+                            setLeaderboardOption(option)
+                        }}>
+                            <label htmlFor="">
+                                {option}
+                            </label>
+                        </div>
+                    )
+                })
+            }
+
+            </div>
+            {
+                leaderboardoption=="Group"&&
+                <div className="leaderboard">
+                {
+                    groupByTeam(leaderboarddata).map((leaderboard,index)=>{
+                        console.log(leaderboarddata)
+                        return (
+                            <div key={index} className="leaderboard-item">
+                                <div className="left">
+                                     <label htmlFor="">
+                                      Group {index+1}
+                                    </label>
+                                </div>
+                                <div className="right">
+
+                                    <label htmlFor="">
+                                        {leaderboard.entries[0].leaderboard.point}
+                                    </label>
+                                </div>
+                            </div>
+                        
+                        )
+                    })
+                }
+                </div>
+            }
+            {
+                 leaderboardoption=="Individual"&&
+        
+            <div className="leaderboard">
+                {
+                    leaderboarddata.map((leaderboard,index)=>{
+                        console.log(leaderboarddata)
+                        return (
+                            <div key={index} className="leaderboard-item">
+                                <div className="left">
+                                    <img src={wrapImg(leaderboard.user.uimg)} alt=""/>
+                                    <label htmlFor="">
+                                        {leaderboard.user.username}
+                                    </label>
+                                    <small>
+                                        Group {leaderboard.user.team}
+                                    </small>
+                                </div>
+                                <div className="right">
+
+                                    <label htmlFor="">
+                                        {leaderboard.leaderboard.point}
+                                    </label>
+                                </div>
+                            </div>
+                        
+                        )
+                    })
+                }
+            </div>
+                }
         </div>
         </div>
           }

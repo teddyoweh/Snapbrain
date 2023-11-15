@@ -59,6 +59,16 @@ async addQuestion(data) {
       throw error;
     }
   }
+  
+  async getBuzzData(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.get_buzz_data, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding question:', error);
+      throw error;
+    }
+  }
 
 
   async getImages(data) {
@@ -73,6 +83,33 @@ async addQuestion(data) {
   async answerQuestion(data) {
     try {
       const response = await this.axiosInstance.post(endpoints.answer_question, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
+  }
+  async deleteQuestion(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.delete_question, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
+  }
+  async updateTeamNo(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.update_team_no, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
+  }
+  async updateMaxTeamNo(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.update_max_team_no, data);
       return response.data;
     } catch (error) {
       console.error('Error answering question:', error);

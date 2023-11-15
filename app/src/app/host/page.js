@@ -14,6 +14,7 @@ export default function HostPage(){
     const {setUsername,username,setUimg} = useContext(AuthContext)
       const [selected,setSelected] = useState(null)
       const [teams,setteams] = useState(0)
+      const [maxper,setmaxper] = useState(0)
     const router = useRouter()
     const {userid} = useContext(AuthContext)
     function handleSubmit(){ 
@@ -28,7 +29,8 @@ export default function HostPage(){
             userid:userid,
             uimg:selected,
             username:username,
-            teams:teams
+            teams:teams,
+            maxper:maxper
 
         }).then((res)=>{
             router.push(`/game/${res._id}`)
@@ -65,9 +67,11 @@ export default function HostPage(){
                     setUsername(e.target.value)
                 }} />
             
-            </div>
+            </div><div className="row">
 
-            <label htmlFor="">
+  
+                <div className="">
+                <label htmlFor="">
                 Number of Teams
             </label>
             <div className="input-box number">
@@ -77,6 +81,21 @@ export default function HostPage(){
                 }} />
             
             </div>
+            
+                </div>
+                <div className="">
+                <label htmlFor="">
+                Max Persons  
+            </label>
+            <div className="input-box number">
+                <input type="number" placeholder="   Max Persons per Team" value={maxper} onChange={(e)=>{
+   
+   setmaxper(e.target.value)
+                }} />
+            
+            </div>
+            </div>
+                </div>
             <label htmlFor="">
                 Profile</label>
                 <div className="profiles-imgs">
