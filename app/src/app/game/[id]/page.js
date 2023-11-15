@@ -12,7 +12,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AuthContext } from "@/app/context/AuthContext"
 import { socketip } from "@/app/config/ip"
 import { wrapImg } from "@/app/services/utils"
- 
+function getUserIdsfromObject(notInGroups) {
+    return notInGroups.map(user => user.userid);
+}
 function convertTimestampToTime(timestamp) {
     const date = new Date(timestamp);
     const timeString = date.toLocaleTimeString([], { hour12: true });
@@ -56,25 +58,7 @@ function shortenString(str, maxLength = 34) {
         return str.substring(0, maxLength) + "...";
     }
 }
-function RenderTeamBox(id,session){
-
-    return (
-        <div className="team-box">
-        {
-            session.usersession?.userSessions.length >0?
-            <div>
-         </div>
-        :
-        <div className="empty-session">
-            <label htmlFor="">
-                No Users
-            </label>
-        </div>        }
-
-        </div>
-
-    )
-}
+ 
 function RenderPostQuestions({ sessiondata,  handleSetQuestion,setSelectedQuestion,selectedQuestion }) {
     const [questions, setQuestions] = useState(sessiondata.questions);
   
@@ -187,9 +171,24 @@ export default function GamePage(){
                 setGameState(data.data.stat);
                 setSelectedQuestion(data.data.activeQuestion);
                 setAnswer(null)
-                
+                setTeams(data.data.teams)
+                setmaxNumnberTeam(data.data.maxNumnberTeam)
+ 
+
+            
            
          
+            }
+            else if (data.type === 'update_sessionx') {
+                const session = data.data.newDoc
+                console.log(session,"new sesson")
+                setSessiondata(session)
+                setSelectedQuestion(session.session.activeQuestion)
+                setGameState(session.session.stat)
+                setLeaderboardData(session.leaderboard)
+                setmaxNumnberTeam(session.session.maxNumnberTeam)
+                setTeams(session.session.teams)                
+
             }
             else if (data.type === 'update_question') {
                 setSelectedQuestion(data.data.activeQuestion);
@@ -257,6 +256,9 @@ export default function GamePage(){
     const leaderboardoptions = ["Group","Individual"]
     const [leaderboardoption,setLeaderboardOption] = useState(leaderboardoptions[0])
     const handleTeamsChange = useCallback((value)=>{
+        if(value<1){
+            alert("Team count cannot be less than 1")
+        }else{
         if (socketRef.current) {
             socketRef.current.send(JSON.stringify({
                 type: 'update_teamno',
@@ -267,6 +269,29 @@ export default function GamePage(){
             }));
           
         }
+    }
+
+    })
+
+    const handleMaxNumChange = useCallback((value)=>{
+       
+        if(value<1){
+            alert("Max user per team cannot be less than 1")
+        }
+        else{
+
+    
+        if (socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'update_max_teamno',
+                data:{
+               
+                    maxteamno:value
+                }  
+            }));
+          
+        }
+    }
 
     })
      return (
@@ -332,8 +357,20 @@ export default function GamePage(){
                         <div className="answers">
                             {
                                  sessiondata.questions[selectedQuestion]?.answers.map((answer_,index)=>{
+                                    function findTeamByUserId(groupsAggregate, userId) {
+                                        for (const teamNumber in groupsAggregate) {
+                                            const teamUsers = groupsAggregate[teamNumber];
+                                            const foundUser = teamUsers.find(user => user.userid === userId);
+                                    
+                                            if (foundUser) {
+                                                return parseInt(teamNumber);  
+                                            }
+                                        }
+                                    
+                                        return null;  
+                                    }
                                     return (
-                                        <div className={answer==index+1?"answer active":"answer"} key={index} onClick={()=>answerQuestion(index+1,0)}>
+                                        <div className={answer==index+1?"answer active":"answer"} key={index} onClick={()=>answerQuestion(index+1,findTeamByUserId(sessiondata.sessionInfo.groups_agg, userid))}>
                                             <label htmlFor="">
                                               ({String.fromCharCode(64 + answer_.id)})  {answer_.value}
                                             </label>
@@ -460,20 +497,130 @@ export default function GamePage(){
                     </div>
                 </div>}
             </div>
-            
+            {
+                sessiondata &&
+       
             <div className="teams">
                 {
-                   [...Array(sessiondata.session.teams)].map((team,index)=>{
+                    Object.keys(sessiondata.sessionInfo.groups_agg).map((key,index)=>{
+                        console.log(userid, getUserIdsfromObject(sessiondata.sessionInfo.users_info.not_in_groups) ,"xsd")
                         return (
                             <div key={index}className="team">
                                 <label htmlFor="" className="team-title">Group {index+1}</label>
-                              <RenderTeamBox id={id} session={sessiondata}/>
+                                <div className="team-box-teddy">
+       
+        
+            <div>
+          
+                            <div key={index} className="grouped-users">
+                            
+                            
+                                {
+                                    sessiondata.sessionInfo.groups_agg[key].length==0?
+                                    <div className="empty-sessionx">
+                                    <label htmlFor="">
+                                        No Users
+                                    </label>
+                                </div>:
+                             sessiondata.sessionInfo.groups_agg[key].map((user,index)=>{
+                                return (
+                                    <div key={index} className="user">
+                                        <div className="left">
+                                            <img src={wrapImg(user.uimg)} alt=""/>
+                                            <label htmlFor="">
+                                                {user.username}
+                                            </label>
+                                        </div>
+                                        <div className="right">
+                                            <label htmlFor="">
+                                                {user.team}
+                                            </label>
+                                        </div>
+                                    </div>
+                                )
+                            })
+                                }
+                            </div>
+                      
+              
+                
+             </div>
+             {
+                getUserIdsfromObject(sessiondata.sessionInfo.users_info.not_in_groups).includes(userid)&&sessiondata.sessionInfo.groups_agg[key].length<maxNumnberTeam&&
+                <div className="add-btn-userinfo"
+                onClick={()=>{
+                    MicroServiceClient.updateUserTeam({userid,session:id,team:parseInt(key)}).then((res)=>{
+                        console.log(res)
+                    })
+                
+                }}
+                >
+                    Join Group
+                </div>
+             }
+      {
+                getUserIdsfromObject(sessiondata.sessionInfo.groups_agg[key]).includes(userid)&&
+                <div className="rmv-btn-userinfo"
+                onClick={()=>{
+                    MicroServiceClient.updateUserTeam({userid,session:id,team:null}).then((res)=>{
+                        console.log(res)
+                    })
+                
+                }}
+                >
+                    Leave Group
+                </div>
+             }
+
+        </div>
+
+                              
                             </div>
                         )
                     })
                    
                 
                 }
+                <div className="not-group">
+                                <label htmlFor="" className="team-title">Not Grouped</label>
+
+                           
+                              <div className="team-box">
+                                {
+                                    sessiondata.sessionInfo?.users_info.not_in_groups.length >0?
+                                    <div className="not-grouped-box">
+                                    {
+                                        sessiondata.sessionInfo?.users_info.not_in_groups.map((user,index)=>{
+                                            return (
+                                                <div key={index} className="user">
+                                                    <div className="left">
+                                                        <img src={wrapImg(user.uimg)} alt=""/>
+                                                        <label htmlFor="">
+                                                            {user.username}
+                                                        </label>
+                                                    </div>
+                                                    <div className="right">
+                                                        <label htmlFor="">
+                                                            {user.team}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })
+                                    }
+                                    </div>
+                                    
+                                    :
+                                    <div className="empty-session">
+            <label htmlFor="">
+                No Users
+            </label>
+        </div>  
+                                    }
+                                    <div>
+                                 </div>
+                              </div>
+                                </div>
                 {
                     sessiondata.session.createdby==userid&&
               <div className="add-team">
@@ -483,7 +630,7 @@ export default function GamePage(){
                 <div className="user-count-box">
                         <div className="icon"
                         onClick={()=>{
-                            handleTeamsChange(teams-1)
+                            handleTeamsChange(teams+1)
                         }}
                         >
                             <Add size="18" color="#341a7c"/>
@@ -504,7 +651,11 @@ export default function GamePage(){
                     Max User Per Team
                 </label>
                 <div className="user-count-box">
-                        <div className="icon">
+                        <div className="icon"
+                        onClick={()=>{
+                            handleMaxNumChange(maxNumnberTeam+1)
+                        }}
+                        >
                             <Add size="18" color="#341a7c"/>
                         </div>
                         <label htmlFor="">
@@ -512,7 +663,11 @@ export default function GamePage(){
                                maxNumnberTeam
                             }
                         </label>
-                        <div className="icon">
+                        <div className="icon"
+                          onClick={()=>{
+                            handleMaxNumChange(maxNumnberTeam-1)
+                        }}
+                        >
                             <Minus size="18" color="#341a7c"/>
                         </div>
                 </div>
@@ -520,6 +675,7 @@ export default function GamePage(){
             </div>
 }
             </div>
+                 }
         </div>
         <div className="leaderboard-box">
             <label htmlFor="" className="title">
@@ -601,6 +757,12 @@ export default function GamePage(){
                 }
         </div>
         </div>
+          }
+          {
+                sessiondata==null&&
+                <div className="loading-container">
+                <div className="loading-spinner"></div>
+              </div>
           }
         </div>
         </DndProvider>

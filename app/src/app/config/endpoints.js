@@ -9,6 +9,7 @@ export const endpoints = {
     "delete_question": "/api/delete_question",
     "update_team_no": "/api/update_team_no",
     "update_max_team_no": "/api/update_max_team_no",
+    "update_user_team": "/api/update_user_team",
     "images": "/images",
 
 }

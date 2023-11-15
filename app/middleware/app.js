@@ -153,6 +153,60 @@ app.get('/', (req, res) => {
       });
       return questions
  }
+ async function getSessionInfo(sessionid) {
+    try {
+        const session = await SessionModel.findOne({ _id: sessionid });
+        if (!session) {
+            throw new Error("Session not found");
+        }
+
+        const sessionUsers = await SessionUserModel.find({ sessionid: sessionid });
+        console.log(sessionUsers,"sessionUsers");
+        const usersInGroups = [];
+        const usersNotInGroups = [];
+        const groupsAggregate = {};
+        for (let teamNumber = 1; teamNumber <= session.teams; teamNumber++) {
+            groupsAggregate[teamNumber] = [];
+        }
+        for (const user of sessionUsers) {
+            const userInfo = await userModel.findOne({ userid: user.userid });
+
+            if (!userInfo) {
+                continue;  
+            }
+
+            const userEntry = {
+                username: userInfo.username,
+                userid: userInfo.userid,
+                uimg: userInfo.uimg,
+            };
+
+            if (user.team) {
+               
+                usersInGroups.push(userEntry);
+
+            
+                if (!groupsAggregate[user.team]) {
+                    groupsAggregate[user.team] = [];
+                }
+                groupsAggregate[user.team].push(userEntry);
+            } else {
+       
+                usersNotInGroups.push(userEntry);
+            }
+        }
+
+        const usersInfo = {
+            in_groups: usersInGroups,
+            not_in_groups: usersNotInGroups,
+        };
+
+        return { users_info: usersInfo, groups_agg: groupsAggregate };
+    } catch (error) {
+        throw error;
+    }
+}
+
  async function getLeaderboard(sessionid) {
     try {
         const leaderboardEntries = await leaderboardModel.find({ sessionid: sessionid });
@@ -217,7 +271,28 @@ app.get('/', (req, res) => {
     }
 }
 
+async function fetchData(session,sessionId) {
+    try {
+        const [questions, usersessions, leaderboard, sessionInfo] = await Promise.all([
+            getQuestions(sessionId),
+            getUserSessionsAndTeams(sessionId),
+            getLeaderboard(sessionId),
+            getSessionInfo(sessionId),
+        ]);
 
+        const result = {
+            usersession: usersessions,
+            session: session,
+            questions: questions,
+            leaderboard: leaderboard,
+            sessionInfo: sessionInfo,
+        };
+
+        return result;
+    } catch (error) {
+        throw error;
+    }
+}
 
  app.post('/api/get_session', (req, res) => {
     const {userid,sessionid} = req.body
@@ -225,15 +300,10 @@ app.get('/', (req, res) => {
        const questions = await getQuestions(sessionid)
          const usersessions = await getUserSessionsAndTeams(sessionid)
             const leaderboard = await getLeaderboard(sessionid)
-            res.json({usersession:usersessions,session:session,questions:questions,leaderboard:leaderboard})
+            const sessionInfo = await getSessionInfo(sessionid);
+            res.json({usersession:usersessions,session:session,questions:questions,leaderboard:leaderboard,sessionInfo:sessionInfo})
         
-   
-    })
- 
-   
-
- });
-
+    })})
  app.post('/api/update_team_no', (req, res) => {
     const {userid,sessionid,teamno} = req.body
     SessionModel.findByIdAndUpdate(sessionid, { teams: teamno}, { new: true })
@@ -353,7 +423,13 @@ app.get('/', (req, res) => {
     })
 
     })
-  
+    app.post('/api/update_user_team', (req, res) => {
+      const {userid,session,team} = req.body
+        SessionUserModel.findOneAndUpdate({ userid: userid, sessionid: session }, { $set: { team: team } }, { new: true })
+        .then((user) => {
+            res.json(user);
+        })
+        })
     app.post('/api/answer_question', (req, res) => {
         const { userid, session, questionid, answer, team } = req.body;
         
@@ -431,7 +507,13 @@ app.post('/api/join_session', (req, res) => {
             newUser.save().then(async (user) => {
                 const questions = await getQuestions(session._id)
                 const usersessions = await getUserSessionsAndTeams(session._id)
-                res.json({usersession:usersessions,session:session,questions:questions})
+                   const leaderboard = await getLeaderboard(session._id)
+                   const sessionInfo = await getSessionInfo(session._id);
+ 
+                   res.json({usersession:usersessions,session:session,questions:questions,leaderboard:leaderboard,sessionInfo:sessionInfo})
+               
+          
+         
             }
             ).catch((err) => {
                 res.status(500).send(err.message);
@@ -510,27 +592,25 @@ app.listen(PORT, () => {
       const changeStream = SessionModel.watch({ fullDocument: 'updateLookup', filter: { '_id': sessionId } });
 
 
-  changeStream.on('change', async (change) => {
-     console.log("Change in session");
+      changeStream.on('change', async (change) => {
+         console.log("Change in session");
+          
+       const newDoc = await SessionModel.findById(sessionId);
+    
       
-   const newDoc = await SessionModel.findById(sessionId);
-//    const questions = await getQuestions(sessionId)
-//    const usersessions = await getUserSessionsAndTeams(sessionId)
-//    const leaderboard = await getLeaderboard(sessionId)
-
-//    const resx = {usersession:usersessions,session:newDoc,questions:questions,leaderboard:leaderboard}
-
-   console.log(newDoc.stat);
-    ws.send(JSON.stringify({
-        type: "update_stat",
-        data: {
-            stat: newDoc.stat,
-            activeQuestion:newDoc.activeQuestion,
-            // newDoc:resx
-
-        }
-    }));
-  });
+       console.log(newDoc.stat);
+        ws.send(JSON.stringify({
+            type: "update_stat",
+            data: {
+                stat: newDoc.stat,
+                activeQuestion:newDoc.activeQuestion,
+                teams:newDoc.teams,
+                maxNumnberTeam:newDoc.maxNumnberTeam,
+     
+            }
+        }));
+      });
+      
   const changeStream0 = leaderboardModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId } });
   changeStream0.on('change', async (change) => {
     console.log("Change in leaderboard session");
@@ -543,12 +623,48 @@ app.listen(PORT, () => {
         },
     }));
 });
+const changeStreamx = SessionUserModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId } });
+changeStreamx.on('change', async (change) => {
+    console.log("Change in session");
+
+    try {
+        const [newDoc, questions, usersessions, leaderboard, sessionInfo] = await Promise.all([
+            SessionModel.findById(sessionId),
+            getQuestions(sessionId),
+            getUserSessionsAndTeams(sessionId),
+            getLeaderboard(sessionId),
+            getSessionInfo(sessionId),
+        ]);
+
+        console.log(newDoc.stat);
+        ws.send(JSON.stringify({
+            type: "update_sessionx",
+            data: {
+                stat: newDoc.stat,
+                activeQuestion: newDoc.activeQuestion,
+                teams: newDoc.teams,
+                maxNumnberTeam: newDoc.maxNumnberTeam,
+                newDoc: {
+                    usersession: usersessions,
+                    session: newDoc,
+                    questions: questions,
+                    leaderboard: leaderboard,
+                    sessionInfo: sessionInfo,
+                }
+            }
+        }));
+    } catch (error) {
+        console.error("Error processing change:", error);
+    }
+});
+ 
   const changeStream1 = userAnswerModel.watch({ fullDocument: 'updateLookup', filter: {sessionid: sessionId,userid:userId } });
 
+ 
+ 
   changeStream1.on('change', async (change) => {
     console.log("Change in userAnswerModel session");
-    console.log(change.fullDocument.userid);
-
+ 
      const usersData = await userAnswerModel.find({
         sessionid: change.fullDocument.sessionid,
         questionid: change.fullDocument.questionid,
@@ -558,7 +674,7 @@ app.listen(PORT, () => {
 
     const userData = await userModel.find({ userid: { $in: userIds } });
 
-    console.log(usersData,"usersData");
+ 
     const mergedUserData = userData.map(user => {
         const answerData = usersData.find(u => u.userid === user.userid);
         return {
@@ -574,6 +690,7 @@ app.listen(PORT, () => {
         }
     }
     
+    console.log("this answer is",answer)
  
     ws.send(JSON.stringify({
         type: "update_answer",

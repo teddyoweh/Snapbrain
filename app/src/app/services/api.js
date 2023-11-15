@@ -116,6 +116,15 @@ async addQuestion(data) {
       throw error;
     }
   }
+  async updateUserTeam(data) {
+    try {
+      const response = await this.axiosInstance.post(endpoints.update_user_team, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
+  }
 }
 
  

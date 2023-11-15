@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    checkId();
+    checkId(setUserId);
   }, []);
  
  
