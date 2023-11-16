@@ -17,6 +17,7 @@ export default function HostPage(){
       const [maxper,setmaxper] = useState(0)
     const router = useRouter()
     const {userid} = useContext(AuthContext)
+    console.log(require(`../assets/images/cs1048486361028912.png`).default)
     function handleSubmit(){ 
         const v = title==''?"btn vibrating":"btn"
         setBtnClass(v)
@@ -100,7 +101,9 @@ export default function HostPage(){
                 Profile</label>
                 <div className="profiles-imgs">
             {profiles&&profiles.map((image,index)=>{
-
+                // const uriz = `../assets/images/cs1048486361028912.png`
+                // console.log(require(`../assets/images/cs1048486361028912.png`).default)
+                const uriz = require(`../assets/images/${image}`).default.src
                 return (
                     <div key={index} className={selected==image? "profile-img active":"profile-img"} 
                     onClick={(e)=>{
@@ -113,7 +116,7 @@ export default function HostPage(){
 
                     
                         }>
-                        <img src={wrapImg(image)} alt=""/>
+                        <img src={uriz} alt=""/>
                     </div>
                 )
             })}

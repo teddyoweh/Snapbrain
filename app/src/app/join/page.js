@@ -84,7 +84,7 @@ export default function JoinPage(){
 
                     
                         }>
-                        <img src={wrapImg(image)} alt=""/>
+                        <img src={`../assets/images/${image}`} alt=""/>
                     </div>
                 )
             })}
