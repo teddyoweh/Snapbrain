@@ -71,6 +71,7 @@ export default function JoinPage(){
                 Profile</label>
                 <div className="profiles-imgs">
             {profiles&&profiles.map((image,index)=>{
+                const uriz = require(`../assets/images/${image}`).default.src
 
                 return (
                     <div key={index} className={selected==image? "profile-img active":"profile-img"} 
@@ -84,8 +85,7 @@ export default function JoinPage(){
 
                     
                         }>
-                        <img src={`../assets/images/${image}`} alt=""/>
-                    </div>
+      <img src={uriz} alt=""/>                    </div>
                 )
             })}
         </div>
