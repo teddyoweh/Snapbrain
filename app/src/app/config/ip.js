@@ -4,5 +4,5 @@
 // export const ip = "https://snapbrain-28f92826bdb8.herokuapp.com"
 // export const socketip = 'ws://snapbrain-28f92826bdb8.herokuapp.com';
 
-export const ip = "http://50.116.24.45:3030"
+export const ip = "https://snapbrain-28f92826bdb8.herokuapp.com"
 export const socketip = "wss://50.116.24.45:3050"
