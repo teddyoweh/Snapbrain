@@ -56,8 +56,6 @@ public:
             close(serverSocket);
             return;
         }
-
-
         listen(serverSocket, 5);
 
         std::cout << "Server listening on port " << port_ << std::endl;
